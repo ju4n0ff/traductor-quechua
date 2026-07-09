@@ -1,0 +1,9 @@
+models/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.DS_Store
+Thumbs.db
+informe del traductor.docx
