@@ -39,7 +39,7 @@ edge-tts>=7.2.8
 # Activate venv
 .\venv\Scripts\activate
 # Run app
-python src/main.py
+python -m src.main
 ```
 
 ## Models
@@ -96,7 +96,7 @@ All constants in one file:
 ```powershell
 cd C:\Users\xlol5\Desktop\Traductor
 .\venv\Scripts\activate
-python src/main.py
+python -m src.main
 ```
 
 ## Common Issues

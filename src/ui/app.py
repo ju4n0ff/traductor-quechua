@@ -29,6 +29,7 @@ class TranslatorApp(ctk.CTk):
         self._translator = TextTranslator()
         self._tts = TextToSpeech()
 
+        self._dir_var = ctk.StringVar(value="Automatico")
         self._processing_queue: queue.Queue = queue.Queue()
         self._processing_thread: threading.Thread | None = None
         self._running = True
@@ -93,13 +94,24 @@ class TranslatorApp(ctk.CTk):
             height=38,
         )
         self._mode_switch.set("Voz")
-        self._mode_switch.pack(fill="x", pady=(0, 16))
+        self._mode_switch.pack(fill="x")
+
+        dir_row = ctk.CTkFrame(self._main, fg_color="transparent")
+        dir_row.pack(fill="x", pady=(12, 16))
+        ctk.CTkLabel(dir_row, text="Direccion:", font=ctk.CTkFont(family=FONT_FAMILY, size=12)).pack(side="left", padx=(0, 8))
+        self._dir_menu = ctk.CTkOptionMenu(
+            dir_row,
+            values=["Automatico", "Quechua → Espanol", "Espanol → Quechua"],
+            variable=self._dir_var,
+            width=200,
+            font=ctk.CTkFont(family=FONT_FAMILY, size=12),
+        )
+        self._dir_menu.pack(side="left")
 
     def _build_text_cards(self):
         text_frame = ctk.CTkFrame(self._main, fg_color="transparent")
         text_frame.pack(fill="both", expand=True)
 
-<<<<<<< HEAD
         # ---- Tarjeta: texto original ----
         src_card = Card(text_frame)
         src_card.pack(fill="both", expand=True, pady=(0, 10))
@@ -114,29 +126,6 @@ class TranslatorApp(ctk.CTk):
             text_color=TEXT_PRIMARY,
         )
         self._src_text.pack(fill="both", expand=True, padx=16, pady=(8, 16))
-=======
-        dir_frame = ctk.CTkFrame(mode_frame, fg_color="transparent")
-        dir_frame.pack(side="right", padx=10)
-        ctk.CTkLabel(dir_frame, text="Direccion:", font=ctk.CTkFont(size=12)).pack(side="left", padx=(0, 4))
-        self._dir_var = ctk.StringVar(value="auto")
-        self._dir_menu = ctk.CTkOptionMenu(
-            dir_frame,
-            values=["Automatico", "Quechua → Espanol", "Espanol → Quechua"],
-            variable=self._dir_var,
-            width=180,
-        )
-        self._dir_menu.pack(side="left")
-
-        # Text areas
-        text_frame = ctk.CTkFrame(self._main)
-        text_frame.pack(fill="both", expand=True, pady=4)
-
-        src_frame = ctk.CTkFrame(text_frame)
-        src_frame.pack(fill="both", expand=True, padx=6, pady=6)
-        ctk.CTkLabel(src_frame, text="Texto original", font=ctk.CTkFont(size=13, weight="bold")).pack(anchor="w")
-        self._src_text = ctk.CTkTextbox(src_frame, font=ctk.CTkFont(size=14), height=100)
-        self._src_text.pack(fill="both", expand=True, padx=4, pady=(2, 4))
->>>>>>> 9f5370dfc1469c568ce31000c1736958a96f959c
         self._src_text.bind("<KeyRelease>", self._on_text_change)
 
         # ---- Boton traducir (primario, centrado) ----
@@ -272,18 +261,13 @@ class TranslatorApp(ctk.CTk):
         text = self._tgt_text.get("0.0", "end").strip()
         if not text:
             return
-<<<<<<< HEAD
-        self._status.set_status("Reproduciendo audio...", state="busy")
-        threading.Thread(target=self._tts.speak, args=(text, "es"), daemon=True).start()
-=======
         direction = self._dir_var.get()
         if direction == "Espanol → Quechua":
             tts_lang = "qu"
         else:
             tts_lang = "es"
-        self._status.set_status("Reproduciendo audio...")
+        self._status.set_status("Reproduciendo audio...", state="busy")
         threading.Thread(target=self._tts.speak, args=(text, tts_lang), daemon=True).start()
->>>>>>> 9f5370dfc1469c568ce31000c1736958a96f959c
 
     def _start_processing_thread(self):
         self._processing_thread = threading.Thread(target=self._process_queue, daemon=True)
@@ -340,13 +324,8 @@ class TranslatorApp(ctk.CTk):
         if task_id != self._last_audio_task_id:
             return
 
-<<<<<<< HEAD
-        self.after(0, lambda: self._update_tgt_text(translation))
-        self.after(0, lambda: self._status.set_status("Traduccion lista", state="idle"))
-=======
         self.after(0, lambda t=translation: self._update_tgt_text(t))
-        self.after(0, lambda: self._status.set_status("Traduccion lista"))
->>>>>>> 9f5370dfc1469c568ce31000c1736958a96f959c
+        self.after(0, lambda: self._status.set_status("Traduccion lista", state="idle"))
         self.after(0, lambda: self._record_hint.configure(text="Presiona para grabar"))
         self.after(0, lambda: (self._progress.stop(), self._progress.pack_forget()))
 
