@@ -36,11 +36,16 @@ class TextTranslator:
             return "qu"
         return "es"
 
-    def translate(self, text: str, source_lang: str | None = None) -> str:
+    def translate(self, text: str, source_lang: str | None = None, direction: str | None = None) -> str:
         self._ensure_model()
-        detected = source_lang or self._detect_lang(text)
-        src_lang = QUE_SRC if detected == "qu" else SPA_SRC
-        tgt_lang = SPA_SRC if detected == "qu" else QUE_SRC
+        if direction == "qu_to_es":
+            src_lang, tgt_lang = QUE_SRC, SPA_SRC
+        elif direction == "es_to_qu":
+            src_lang, tgt_lang = SPA_SRC, QUE_SRC
+        else:
+            detected = source_lang or self._detect_lang(text)
+            src_lang = QUE_SRC if detected == "qu" else SPA_SRC
+            tgt_lang = SPA_SRC if detected == "qu" else QUE_SRC
 
         self._tokenizer.src_lang = src_lang
         inputs = self._tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
