@@ -134,7 +134,7 @@ class TranslatorApp(ctk.CTk):
         ctr_frame.pack(fill="x")
         self._swap_btn = ctk.CTkButton(
             ctr_frame,
-            text="Traducir  \u2192",
+            text="Traducir",
             width=150,
             height=36,
             corner_radius=8,
@@ -284,6 +284,7 @@ class TranslatorApp(ctk.CTk):
         text = self._tgt_text.get("0.0", "end").strip()
         if not text:
             return
+<<<<<<< HEAD
         direction = self._dir_var.get()
         if direction == "Espanol → Quechua":
             tts_lang = "qu"
@@ -291,6 +292,10 @@ class TranslatorApp(ctk.CTk):
             tts_lang = "es"
         self._status.set_status("Reproduciendo audio...", state="busy")
         threading.Thread(target=self._tts.speak, args=(text, tts_lang), daemon=True).start()
+=======
+        self._status.set_status("Reproduciendo audio...", state="busy")
+        threading.Thread(target=self._tts.speak, args=(text, "es"), daemon=True).start()
+>>>>>>> 0946b54504da9808d33cc01e7bbde914a7286f6e
 
     def _start_processing_thread(self):
         self._processing_thread = threading.Thread(target=self._process_queue, daemon=True)
@@ -347,7 +352,11 @@ class TranslatorApp(ctk.CTk):
         if task_id != self._last_audio_task_id:
             return
 
+<<<<<<< HEAD
         self.after(0, lambda t=translation: self._update_tgt_text(t))
+=======
+        self.after(0, lambda: self._update_tgt_text(translation))
+>>>>>>> 0946b54504da9808d33cc01e7bbde914a7286f6e
         self.after(0, lambda: self._status.set_status("Traduccion lista", state="idle"))
         self.after(0, lambda: self._record_hint.configure(text="Presiona para grabar"))
         self.after(0, lambda: (self._progress.stop(), self._progress.pack_forget()))
