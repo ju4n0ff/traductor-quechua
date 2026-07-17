@@ -30,6 +30,7 @@ class TranslatorApp(ctk.CTk):
         self._tts = TextToSpeech()
 
         self._dir_var = ctk.StringVar(value="Automatico")
+        self._src_mic_recording = False
         self._processing_queue: queue.Queue = queue.Queue()
         self._processing_thread: threading.Thread | None = None
         self._running = True
@@ -45,7 +46,6 @@ class TranslatorApp(ctk.CTk):
         self._main.pack(fill="both", expand=True, padx=28, pady=24)
 
         self._build_header()
-        self._build_mode_bar()
         self._build_text_cards()
         self._build_record_section()
         self._build_status_bar()
@@ -79,25 +79,8 @@ class TranslatorApp(ctk.CTk):
         self._dir_badge = Badge(header_row, text="QUECHUA  \u21C4  ESPA\u00d1OL")
         self._dir_badge.pack(side="right", anchor="e", pady=(4, 0))
 
-    def _build_mode_bar(self):
-        self._mode_switch = ctk.CTkSegmentedButton(
-            self._main,
-            values=["Voz", "Texto"],
-            font=ctk.CTkFont(family=FONT_FAMILY, size=13, weight="bold"),
-            fg_color=SURFACE,
-            selected_color=ACCENT,
-            selected_hover_color=ACCENT_HOVER,
-            unselected_color=SURFACE,
-            unselected_hover_color=SURFACE_ALT,
-            text_color=TEXT_PRIMARY,
-            corner_radius=10,
-            height=38,
-        )
-        self._mode_switch.set("Voz")
-        self._mode_switch.pack(fill="x")
-
         dir_row = ctk.CTkFrame(self._main, fg_color="transparent")
-        dir_row.pack(fill="x", pady=(12, 16))
+        dir_row.pack(fill="x", pady=(0, 16))
         ctk.CTkLabel(dir_row, text="Direccion:", font=ctk.CTkFont(family=FONT_FAMILY, size=12)).pack(side="left", padx=(0, 8))
         self._dir_menu = ctk.CTkOptionMenu(
             dir_row,
@@ -115,7 +98,25 @@ class TranslatorApp(ctk.CTk):
         # ---- Tarjeta: texto original ----
         src_card = Card(text_frame)
         src_card.pack(fill="both", expand=True, pady=(0, 10))
-        EyebrowLabel(src_card, "Texto original").pack(anchor="w", padx=16, pady=(14, 0))
+        src_header = ctk.CTkFrame(src_card, fg_color="transparent")
+        src_header.pack(fill="x", padx=16, pady=(14, 0))
+        EyebrowLabel(src_header, "Texto original").pack(side="left")
+        self._src_mic_btn = ctk.CTkButton(
+            src_header,
+            text="\U0001F3A4\u00a0Dictar",
+            width=90,
+            height=26,
+            corner_radius=8,
+            fg_color="transparent",
+            hover_color=SURFACE_ALT,
+            border_width=1,
+            border_color=ACCENT,
+            text_color=ACCENT,
+            font=ctk.CTkFont(family=FONT_FAMILY, size=12),
+            cursor="hand2",
+            command=self._on_src_mic_click,
+        )
+        self._src_mic_btn.pack(side="right")
         self._src_text = ctk.CTkTextbox(
             src_card,
             font=ctk.CTkFont(family=FONT_FAMILY, size=14),
@@ -206,6 +207,28 @@ class TranslatorApp(ctk.CTk):
 
     def _on_text_change(self, event=None):
         pass  # Se traduce manualmente via boton
+
+    def _on_src_mic_click(self):
+        if not self._src_mic_recording:
+            self._src_mic_recording = True
+            self._src_mic_btn.configure(text="\U0001F3A4\u00a0Detener", fg_color=ACCENT, text_color="#ffffff")
+            self._recorder.start_recording()
+            self._status.set_status("Grabando...", state="busy")
+        else:
+            self._src_mic_recording = False
+            self._src_mic_btn.configure(text="\U0001F3A4\u00a0Dictar", fg_color="transparent", text_color=ACCENT)
+            self._status.set_status("Procesando audio...", state="busy")
+            self.update_idletasks()
+            audio, peak = self._recorder.stop_recording()
+            if audio is None or len(audio) < 8000:
+                self._status.set_status("Audio muy corto", state="error")
+                return
+            if peak < 0.01:
+                self._status.set_status(f"Volumen muy bajo ({peak:.4f})", state="error")
+                return
+            task_id = self._last_audio_task_id + 1
+            self._last_audio_task_id = task_id
+            self._processing_queue.put(("audio", audio, task_id))
 
     def _on_record_toggle(self, is_recording: bool):
         if is_recording:
