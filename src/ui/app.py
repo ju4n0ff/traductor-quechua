@@ -2,15 +2,18 @@ import threading
 import queue
 import time
 import customtkinter as ctk
-from src.utils.config import APP_TITLE, APP_SIZE, APP_THEME
-from src.ui.widgets import RecordButton, StatusBar
+from src.utils.config import APP_TITLE, APP_SIZE
+from src.ui.widgets import RecordButton, StatusBar, Card, EyebrowLabel, Badge
+from src.ui.theme import (
+    APP_BG, SURFACE, SURFACE_ALT, ACCENT, ACCENT_HOVER,
+    TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, FONT_FAMILY,
+)
 from src.core.audio import AudioRecorder
 from src.core.asr import SpeechRecognizer
 from src.core.translator import TextTranslator
 from src.core.tts import TextToSpeech
 
 ctk.set_appearance_mode("dark")
-ctk.set_default_color_theme(APP_THEME)
 
 
 class TranslatorApp(ctk.CTk):
@@ -18,7 +21,8 @@ class TranslatorApp(ctk.CTk):
         super().__init__()
         self.title(APP_TITLE)
         self.geometry(APP_SIZE)
-        self.minsize(700, 500)
+        self.minsize(760, 560)
+        self.configure(fg_color=APP_BG)
 
         self._recorder = AudioRecorder()
         self._recognizer = SpeechRecognizer()
@@ -33,92 +37,162 @@ class TranslatorApp(ctk.CTk):
         self._setup_ui()
         self._start_processing_thread()
 
+    # ------------------------------------------------------------------ UI
+
     def _setup_ui(self):
-        self._main = ctk.CTkFrame(self)
-        self._main.pack(fill="both", expand=True, padx=16, pady=16)
+        self._main = ctk.CTkFrame(self, fg_color="transparent")
+        self._main.pack(fill="both", expand=True, padx=28, pady=24)
 
-        header = ctk.CTkLabel(
+        self._build_header()
+        self._build_mode_bar()
+        self._build_text_cards()
+        self._build_record_section()
+        self._build_status_bar()
+
+    def _build_header(self):
+        header_row = ctk.CTkFrame(self._main, fg_color="transparent")
+        header_row.pack(fill="x", pady=(0, 18))
+
+        title_col = ctk.CTkFrame(header_row, fg_color="transparent")
+        title_col.pack(side="left", anchor="w")
+
+        title_row = ctk.CTkFrame(title_col, fg_color="transparent")
+        title_row.pack(anchor="w")
+        ctk.CTkLabel(title_row, text="", fg_color=ACCENT, width=4, height=22, corner_radius=2).pack(
+            side="left", padx=(0, 10)
+        )
+        ctk.CTkLabel(
+            title_row,
+            text=APP_TITLE,
+            font=ctk.CTkFont(family=FONT_FAMILY, size=22, weight="bold"),
+            text_color=TEXT_PRIMARY,
+        ).pack(side="left")
+
+        ctk.CTkLabel(
+            title_col,
+            text="Traduccion por voz y texto entre quechua y espanol",
+            font=ctk.CTkFont(family=FONT_FAMILY, size=12),
+            text_color=TEXT_MUTED,
+        ).pack(anchor="w", padx=(14, 0), pady=(2, 0))
+
+        self._dir_badge = Badge(header_row, text="QUECHUA  \u21C4  ESPA\u00d1OL")
+        self._dir_badge.pack(side="right", anchor="e", pady=(4, 0))
+
+    def _build_mode_bar(self):
+        self._mode_switch = ctk.CTkSegmentedButton(
             self._main,
-            text="Traductor Quechua ↔ Español",
-            font=ctk.CTkFont(size=22, weight="bold"),
+            values=["Voz", "Texto"],
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13, weight="bold"),
+            fg_color=SURFACE,
+            selected_color=ACCENT,
+            selected_hover_color=ACCENT_HOVER,
+            unselected_color=SURFACE,
+            unselected_hover_color=SURFACE_ALT,
+            text_color=TEXT_PRIMARY,
+            corner_radius=10,
+            height=38,
         )
-        header.pack(pady=(0, 12))
+        self._mode_switch.set("Voz")
+        self._mode_switch.pack(fill="x", pady=(0, 16))
 
-        # Mode selector
-        mode_frame = ctk.CTkFrame(self._main)
-        mode_frame.pack(fill="x", pady=(0, 10))
-        self._mode_var = ctk.StringVar(value="audio")
-        ctk.CTkRadioButton(
-            mode_frame, text="Voz", variable=self._mode_var, value="audio"
-        ).pack(side="left", padx=10)
-        ctk.CTkRadioButton(
-            mode_frame, text="Texto", variable=self._mode_var, value="text"
-        ).pack(side="left", padx=10)
+    def _build_text_cards(self):
+        text_frame = ctk.CTkFrame(self._main, fg_color="transparent")
+        text_frame.pack(fill="both", expand=True)
 
-        self._dir_label = ctk.CTkLabel(
-            mode_frame,
-            text="Quechua <> Espanol",
-            font=ctk.CTkFont(size=13),
-            text_color="#81c784",
+        # ---- Tarjeta: texto original ----
+        src_card = Card(text_frame)
+        src_card.pack(fill="both", expand=True, pady=(0, 10))
+        EyebrowLabel(src_card, "Texto original").pack(anchor="w", padx=16, pady=(14, 0))
+        self._src_text = ctk.CTkTextbox(
+            src_card,
+            font=ctk.CTkFont(family=FONT_FAMILY, size=14),
+            height=100,
+            corner_radius=8,
+            fg_color=SURFACE_ALT,
+            border_width=0,
+            text_color=TEXT_PRIMARY,
         )
-        self._dir_label.pack(side="right", padx=10)
-
-        # Text areas
-        text_frame = ctk.CTkFrame(self._main)
-        text_frame.pack(fill="both", expand=True, pady=4)
-
-        src_frame = ctk.CTkFrame(text_frame)
-        src_frame.pack(fill="both", expand=True, padx=6, pady=6)
-        ctk.CTkLabel(src_frame, text="Texto original", font=ctk.CTkFont(size=13, weight="bold")).pack(anchor="w")
-        self._src_text = ctk.CTkTextbox(src_frame, font=ctk.CTkFont(size=14), height=100)
-        self._src_text.pack(fill="both", expand=True, padx=4, pady=(2, 4))
+        self._src_text.pack(fill="both", expand=True, padx=16, pady=(8, 16))
         self._src_text.bind("<KeyRelease>", self._on_text_change)
 
+        # ---- Boton traducir (primario, centrado) ----
         ctr_frame = ctk.CTkFrame(text_frame, fg_color="transparent")
         ctr_frame.pack(fill="x")
         self._swap_btn = ctk.CTkButton(
             ctr_frame,
-            text="Traducir",
-            width=120,
+            text="Traducir  \u2192",
+            width=150,
+            height=36,
+            corner_radius=8,
+            fg_color=ACCENT,
+            hover_color=ACCENT_HOVER,
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13, weight="bold"),
+            cursor="hand2",
             command=self._translate_text_input,
         )
-        self._swap_btn.pack(pady=4)
+        self._swap_btn.pack(pady=8)
 
-        tgt_frame = ctk.CTkFrame(text_frame)
-        tgt_frame.pack(fill="both", expand=True, padx=6, pady=6)
-        tgt_header = ctk.CTkFrame(tgt_frame)
-        tgt_header.pack(fill="x")
-        ctk.CTkLabel(tgt_header, text="Traduccion", font=ctk.CTkFont(size=13, weight="bold")).pack(side="left")
+        # ---- Tarjeta: traduccion ----
+        tgt_card = Card(text_frame)
+        tgt_card.pack(fill="both", expand=True, pady=(10, 0))
+        tgt_header = ctk.CTkFrame(tgt_card, fg_color="transparent")
+        tgt_header.pack(fill="x", padx=16, pady=(14, 0))
+        EyebrowLabel(tgt_header, "Traduccion").pack(side="left")
         self._speak_tgt_btn = ctk.CTkButton(
             tgt_header,
             text="Escuchar",
-            width=100,
-            height=24,
+            width=110,
+            height=26,
+            corner_radius=8,
+            fg_color="transparent",
+            hover_color=SURFACE_ALT,
+            border_width=1,
+            border_color=ACCENT,
+            text_color=ACCENT,
+            font=ctk.CTkFont(family=FONT_FAMILY, size=12),
+            cursor="hand2",
             command=self._speak_translated,
         )
-        self._speak_tgt_btn.pack(side="right", padx=4)
-        self._tgt_text = ctk.CTkTextbox(tgt_frame, font=ctk.CTkFont(size=14), height=100)
-        self._tgt_text.pack(fill="both", expand=True, padx=4, pady=(2, 4))
+        self._speak_tgt_btn.pack(side="right")
+        self._tgt_text = ctk.CTkTextbox(
+            tgt_card,
+            font=ctk.CTkFont(family=FONT_FAMILY, size=14),
+            height=100,
+            corner_radius=8,
+            fg_color=SURFACE_ALT,
+            border_width=0,
+            text_color=TEXT_PRIMARY,
+        )
+        self._tgt_text.pack(fill="both", expand=True, padx=16, pady=(8, 16))
 
-        # Record button
+    def _build_record_section(self):
         record_frame = ctk.CTkFrame(self._main, fg_color="transparent")
-        record_frame.pack(pady=10)
-        self._record_btn = RecordButton(record_frame, size=90, command=self._on_record_toggle)
+        record_frame.pack(pady=18)
+        self._record_btn = RecordButton(record_frame, size=88, command=self._on_record_toggle)
         self._record_btn.pack()
-        self._record_hint = ctk.CTkLabel(record_frame, text="Presiona para grabar", font=ctk.CTkFont(size=12), text_color="gray")
-        self._record_hint.pack()
+        self._record_hint = ctk.CTkLabel(
+            record_frame,
+            text="Presiona para grabar",
+            font=ctk.CTkFont(family=FONT_FAMILY, size=12),
+            text_color=TEXT_MUTED,
+        )
+        self._record_hint.pack(pady=(8, 0))
 
-        # Progress bar
-        self._progress = ctk.CTkProgressBar(self._main, mode="indeterminate")
-        self._progress.pack(fill="x", pady=(4, 0))
+    def _build_status_bar(self):
+        self._progress = ctk.CTkProgressBar(
+            self._main, mode="indeterminate", corner_radius=4, height=4,
+            fg_color=SURFACE, progress_color=ACCENT,
+        )
+        self._progress.pack(fill="x", pady=(0, 8))
         self._progress.pack_forget()
 
-        # Status
         self._status = StatusBar(self._main)
-        self._status.pack(fill="x", pady=(6, 0))
+        self._status.pack(fill="x")
+
+    # ------------------------------------------------------------- eventos
 
     def _on_text_change(self, event=None):
-        pass  # We translate manually via button
+        pass  # Se traduce manualmente via boton
 
     def _on_record_toggle(self, is_recording: bool):
         if is_recording:
@@ -128,28 +202,28 @@ class TranslatorApp(ctk.CTk):
 
     def _start_recording(self):
         self._recorder.start_recording()
-        self._status.set_status("Grabando...")
+        self._status.set_status("Grabando...", state="busy")
         self._record_hint.configure(text="Presiona para detener")
         self._src_text.delete("0.0", "end")
         self._tgt_text.delete("0.0", "end")
-        self._progress.pack(fill="x", pady=(4, 0))
+        self._progress.pack(fill="x", pady=(0, 8))
         self._progress.start()
 
     def _stop_recording(self):
-        self._status.set_status("Procesando audio...")
+        self._status.set_status("Procesando audio...", state="busy")
         self._record_hint.configure(text="Procesando...")
         self._record_btn.reset()
         self.update_idletasks()
 
         audio, peak = self._recorder.stop_recording()
         if audio is None or len(audio) < 8000:
-            self._status.set_status("Audio muy corto")
+            self._status.set_status("Audio muy corto", state="error")
             self._record_hint.configure(text="Presiona para grabar")
             self._progress.stop()
             self._progress.pack_forget()
             return
         if peak < 0.01:
-            self._status.set_status(f"Volumen muy bajo ({peak:.4f})")
+            self._status.set_status(f"Volumen muy bajo ({peak:.4f})", state="error")
             self._record_hint.configure(text="Habla mas cerca del microfono")
             self._progress.stop()
             self._progress.pack_forget()
@@ -163,8 +237,8 @@ class TranslatorApp(ctk.CTk):
         text = self._src_text.get("0.0", "end").strip()
         if not text:
             return
-        self._status.set_status("Traduciendo texto...")
-        self._progress.pack(fill="x", pady=(4, 0))
+        self._status.set_status("Traduciendo texto...", state="busy")
+        self._progress.pack(fill="x", pady=(0, 8))
         self._progress.start()
         self._swap_btn.configure(state="disabled", text="...")
         self.update_idletasks()
@@ -174,7 +248,7 @@ class TranslatorApp(ctk.CTk):
         text = self._tgt_text.get("0.0", "end").strip()
         if not text:
             return
-        self._status.set_status("Reproduciendo audio...")
+        self._status.set_status("Reproduciendo audio...", state="busy")
         threading.Thread(target=self._tts.speak, args=(text, "es"), daemon=True).start()
 
     def _start_processing_thread(self):
@@ -204,7 +278,7 @@ class TranslatorApp(ctk.CTk):
                     pass
 
     def _on_error(self, msg: str):
-        self._status.set_status(f"Error: {msg}")
+        self._status.set_status(f"Error: {msg}", state="error")
         self._record_hint.configure(text="Presiona para grabar")
         self._progress.stop()
         self._progress.pack_forget()
@@ -217,13 +291,13 @@ class TranslatorApp(ctk.CTk):
             return
 
         if not result:
-            self.after(0, lambda: self._status.set_status("No se reconocio voz"))
+            self.after(0, lambda: self._status.set_status("No se reconocio voz", state="error"))
             self.after(0, lambda: self._record_hint.configure(text="Presiona para grabar"))
             self.after(0, lambda: (self._progress.stop(), self._progress.pack_forget()))
             return
 
         self.after(0, lambda: self._update_src_text(result))
-        self.after(0, lambda: self._status.set_status("Traduciendo..."))
+        self.after(0, lambda: self._status.set_status("Traduciendo...", state="busy"))
 
         translation = self._translator.translate(result)
 
@@ -231,7 +305,7 @@ class TranslatorApp(ctk.CTk):
             return
 
         self.after(0, lambda: self._update_tgt_text(translation))
-        self.after(0, lambda: self._status.set_status("Traduccion lista"))
+        self.after(0, lambda: self._status.set_status("Traduccion lista", state="idle"))
         self.after(0, lambda: self._record_hint.configure(text="Presiona para grabar"))
         self.after(0, lambda: (self._progress.stop(), self._progress.pack_forget()))
 
@@ -241,7 +315,7 @@ class TranslatorApp(ctk.CTk):
         elapsed = time.time() - start
 
         self.after(0, lambda: self._update_tgt_text(translation))
-        self.after(0, lambda t=elapsed: self._status.set_status(f"Listo ({t:.1f}s)"))
+        self.after(0, lambda t=elapsed: self._status.set_status(f"Listo ({t:.1f}s)", state="idle"))
         self.after(0, lambda: (self._progress.stop(), self._progress.pack_forget()))
         self.after(0, lambda: self._swap_btn.configure(state="normal", text="Traducir"))
 
