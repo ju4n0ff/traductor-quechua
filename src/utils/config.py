@@ -1,7 +1,11 @@
+import sys
 from pathlib import Path
 
-# Project paths
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys.executable).resolve().parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
 MODELS_DIR = BASE_DIR / "models"
 CACHE_DIR = BASE_DIR / "cache"
 
