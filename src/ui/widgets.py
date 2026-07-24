@@ -45,14 +45,17 @@ class Badge(ctk.CTkFrame):
 
 
 class RecordButton(ctk.CTkButton):
-    """Boton circular de grabacion (solo texto, sin iconos generados)."""
+    """Boton circular de grabacion."""
 
-    def __init__(self, master, size: int = 96, command: Callable | None = None, **kwargs):
+    def __init__(self, master, size: int = 96, command: Callable | None = None,
+                 text_record: str = "GRABAR", text_stop: str = "DETENER", **kwargs):
         self._size = size
         self._is_recording = False
+        self._text_record = text_record
+        self._text_stop = text_stop
         super().__init__(
             master,
-            text="GRABAR",
+            text=text_record,
             width=size,
             height=size,
             corner_radius=size // 2,
@@ -74,7 +77,7 @@ class RecordButton(ctk.CTkButton):
     def _on_click(self):
         self._is_recording = not self._is_recording
         if self._is_recording:
-            self.configure(fg_color=DANGER, hover_color=DANGER_HOVER, text="DETENER")
+            self.configure(fg_color=DANGER, hover_color=DANGER_HOVER, text=self._text_stop)
         else:
             self.reset()
         if self._external_command:
@@ -82,7 +85,7 @@ class RecordButton(ctk.CTkButton):
 
     def reset(self):
         self._is_recording = False
-        self.configure(fg_color=ACCENT, hover_color=ACCENT_HOVER, text="GRABAR")
+        self.configure(fg_color=ACCENT, hover_color=ACCENT_HOVER, text=self._text_record)
 
 
 class StatusBar(ctk.CTkFrame):
@@ -112,3 +115,50 @@ class StatusBar(ctk.CTkFrame):
         self._dot.configure(text_color=self._COLORS.get(state, ACCENT))
         self._label.configure(text=text)
         self.update_idletasks()
+
+
+class LangToggle(ctk.CTkFrame):
+    def __init__(self, master, command=None, active="es", **kwargs):
+        kwargs.setdefault("fg_color", "transparent")
+        super().__init__(master, **kwargs)
+        self._command = command
+        self._active = active
+
+        self._es_btn = ctk.CTkButton(
+            self, text="ES", width=40, height=26,
+            corner_radius=6,
+            font=ctk.CTkFont(family=FONT_FAMILY, size=12, weight="bold"),
+            command=lambda: self._set_active("es"),
+        )
+        self._es_btn.pack(side="left", padx=(0, 4))
+
+        self._qu_btn = ctk.CTkButton(
+            self, text="QU", width=40, height=26,
+            corner_radius=6,
+            font=ctk.CTkFont(family=FONT_FAMILY, size=12, weight="bold"),
+            command=lambda: self._set_active("qu"),
+        )
+        self._qu_btn.pack(side="left")
+
+        self._update_style()
+
+    def _set_active(self, lang: str):
+        if lang == self._active:
+            return
+        self._active = lang
+        self._update_style()
+        if self._command:
+            self._command(lang)
+
+    def _update_style(self):
+        for btn, lang in [(self._es_btn, "es"), (self._qu_btn, "qu")]:
+            if lang == self._active:
+                btn.configure(
+                    fg_color=ACCENT, hover_color=ACCENT_HOVER,
+                    text_color="#ffffff", border_width=0,
+                )
+            else:
+                btn.configure(
+                    fg_color="transparent", hover_color=SURFACE,
+                    text_color=TEXT_SECONDARY, border_width=1, border_color=BORDER,
+                )
