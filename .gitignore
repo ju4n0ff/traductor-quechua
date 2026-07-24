@@ -8,5 +8,4 @@ __pycache__/
 Thumbs.db
 informe del traductor.docx
 build/
-dist/*
-!dist/Traductor Quechua.exe
+dist/
