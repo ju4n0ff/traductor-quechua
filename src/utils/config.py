@@ -17,9 +17,9 @@ WHISPER_MODEL_DIR = MODELS_DIR / "whisper"
 ASR_LANGUAGE = None  # None = auto-detect (Whisper no soporta 'qu' como código)
 
 # NLLB Translation
-NLLB_MODEL_NAME = "facebook/nllb-200-distilled-600M"
-NLLB_MODEL_DIR = MODELS_DIR / "nllb"
-# Language codes for NLLB:
+NLLB_CT2_REPO_ID = "entai2965/nllb-200-distilled-600M-ctranslate2"
+NLLB_CT2_DIR = MODELS_DIR / "nllb-ct2-int8"
+# Language codes for NLLB / FLORES-200:
 QUE_SRC = "quy_Latn"   # Southern Quechua (Ayacucho)
 SPA_SRC = "spa_Latn"   # Spanish
 
