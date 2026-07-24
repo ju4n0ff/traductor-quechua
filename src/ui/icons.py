@@ -1,49 +1,44 @@
 from PIL import Image, ImageDraw
 from customtkinter import CTkImage
 
-S = 20
+_BASE = 48
+_DISPLAY = 18
 ACCENT = "#0ea76a"
 ACCENT_FILLED = "#ffffff"
 
 
-def _img(draw_fn, size=S):
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+def _img(draw_fn):
+    img = Image.new("RGBA", (_BASE, _BASE), (0, 0, 0, 0))
     draw_fn(ImageDraw.Draw(img))
-    return CTkImage(img, img, size=(size, size))
+    return img
 
 
-def mic():
-    def draw(d):
-        cx = S / 2
-        d.rounded_rectangle([cx - 4, 2, cx + 4, 13], radius=3, fill=ACCENT)
-        d.rectangle([cx - 1, 13, cx + 1, 15], fill=ACCENT)
-        d.arc([cx - 4, 14, cx + 4, 19], 0, 180, fill=ACCENT, width=2)
-    return _img(draw)
+def _draw_mic(d, color):
+    cx = _BASE / 2
+    d.rounded_rectangle([cx - 10, 4, cx + 10, 32], radius=7, fill=color)
+    d.rectangle([cx - 3, 32, cx + 3, 37], fill=color)
+    d.arc([cx - 10, 35, cx + 10, 46], 0, 180, fill=color, width=4)
 
 
-def mic_filled():
-    def draw(d):
-        cx = S / 2
-        d.rounded_rectangle([cx - 4, 2, cx + 4, 13], radius=3, fill=ACCENT_FILLED)
-        d.rectangle([cx - 1, 13, cx + 1, 15], fill=ACCENT_FILLED)
-        d.arc([cx - 4, 14, cx + 4, 19], 0, 180, fill=ACCENT_FILLED, width=2)
-    return _img(draw)
+def _draw_speaker(d, color):
+    d.rounded_rectangle([4, 12, 20, 36], radius=4, fill=color)
+    d.polygon([(20, 12), (34, 24), (20, 36)], fill=color)
+    for xr in (33, 41):
+        d.arc([xr, 11, xr + 12, 37], -50, 50, fill=color, width=3)
 
 
-def speaker():
-    def draw(d):
-        d.rounded_rectangle([2, 5, 8, 15], radius=2, fill=ACCENT)
-        d.polygon([(8, 5), (14, 10), (8, 15)], fill=ACCENT)
-        for xr in (14, 17):
-            d.arc([xr, 5, xr + 5, 15], -50, 50, fill=ACCENT, width=2)
-    return _img(draw)
+def _draw_arrows(d, color):
+    cy = _BASE / 2
+    d.polygon([(12, cy), (24, cy - 10), (24, cy + 10)], fill=color)
+    d.polygon([(36, cy), (24, cy - 10), (24, cy + 10)], fill=color)
 
 
-def arrows():
-    def draw(d):
-        cy = S / 2
-        # left arrow
-        d.polygon([(5, cy), (10, cy - 4), (10, cy + 4)], fill=ACCENT)
-        # right arrow
-        d.polygon([(15, cy), (10, cy - 4), (10, cy + 4)], fill=ACCENT)
-    return _img(draw)
+_MIC_IMG = _img(lambda d: _draw_mic(d, ACCENT))
+_MIC_FILLED_IMG = _img(lambda d: _draw_mic(d, ACCENT_FILLED))
+_SPEAKER_IMG = _img(lambda d: _draw_speaker(d, ACCENT))
+_ARROWS_IMG = _img(lambda d: _draw_arrows(d, ACCENT))
+
+mic = CTkImage(_MIC_IMG, _MIC_IMG, size=(_DISPLAY, _DISPLAY))
+mic_filled = CTkImage(_MIC_FILLED_IMG, _MIC_FILLED_IMG, size=(_DISPLAY, _DISPLAY))
+speaker = CTkImage(_SPEAKER_IMG, _SPEAKER_IMG, size=(_DISPLAY, _DISPLAY))
+arrows = CTkImage(_ARROWS_IMG, _ARROWS_IMG, size=(_DISPLAY, _DISPLAY))

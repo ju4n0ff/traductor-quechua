@@ -1,6 +1,6 @@
 from typing import Callable
 import customtkinter as ctk
-from src.ui.icons import mic, mic_filled, speaker, arrows
+from src.ui import icons
 from src.ui.theme import (
     ACCENT, ACCENT_HOVER, ACCENT_SOFT, ACCENT_SECONDARY, ACCENT_SECONDARY_SOFT,
     DANGER, DANGER_HOVER, WARNING,

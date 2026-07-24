@@ -4,9 +4,9 @@ import time
 import customtkinter as ctk
 from src.utils.config import APP_TITLE, APP_SIZE
 import src.utils.i18n as i18n
-from src.ui.icons import mic, mic_filled, speaker, arrows
+from src.ui import icons
 from src.ui.widgets import (
-    RecordButton, StatusBar, Card, EyebrowLabel, Badge, LangToggle, IconButton,
+    StatusBar, Card, EyebrowLabel, Badge, LangToggle, IconButton,
 )
 from src.ui.theme import (
     APP_BG, SURFACE, SURFACE_ALT, BORDER,
@@ -20,6 +20,7 @@ from src.core.translator import TextTranslator
 from src.core.tts import TextToSpeech
 
 ctk.set_appearance_mode("dark")
+ctk.set_widget_scaling(1.0)
 
 
 class TranslatorApp(ctk.CTk):
@@ -59,7 +60,6 @@ class TranslatorApp(ctk.CTk):
 
         self._build_direction_section()
         self._build_text_cards()
-        self._build_record_section()
         self._build_status_bar()
 
     def _build_banner(self, parent):
@@ -128,7 +128,7 @@ class TranslatorApp(ctk.CTk):
         src_header.pack(fill="x", padx=18, pady=(14, 0))
         self._src_eyebrow = EyebrowLabel(src_header, "")
         self._src_eyebrow.pack(side="left")
-        self._src_mic_btn = IconButton(src_header, text="Dictar", icon=mic(), icon_active=mic_filled(),
+        self._src_mic_btn = IconButton(src_header, text="Dictar", icon=icons.mic, icon_active=icons.mic_filled,
                                        command=self._on_src_mic_click)
         self._src_mic_btn.pack(side="right")
         self._src_text = ctk.CTkTextbox(
@@ -154,7 +154,7 @@ class TranslatorApp(ctk.CTk):
         self._swap_btn = ctk.CTkButton(
             ctr_row,
             text="  Traducir",
-            image=arrows(),
+            image=icons.arrows,
             width=160,
             height=36,
             corner_radius=BUTTON_RADIUS,
@@ -177,7 +177,7 @@ class TranslatorApp(ctk.CTk):
         tgt_header.pack(fill="x", padx=18, pady=(14, 0))
         self._tgt_eyebrow = EyebrowLabel(tgt_header, "")
         self._tgt_eyebrow.pack(side="left")
-        self._speak_tgt_btn = IconButton(tgt_header, text="Escuchar", icon=speaker(),
+        self._speak_tgt_btn = IconButton(tgt_header, text="Escuchar", icon=icons.speaker,
                                          command=self._speak_translated)
         self._speak_tgt_btn.pack(side="right")
         self._tgt_text = ctk.CTkTextbox(
@@ -190,19 +190,6 @@ class TranslatorApp(ctk.CTk):
             text_color=TEXT_PRIMARY,
         )
         self._tgt_text.pack(fill="both", expand=True, padx=18, pady=(8, 16))
-
-    def _build_record_section(self):
-        record_frame = ctk.CTkFrame(self._main, fg_color="transparent")
-        record_frame.pack(pady=(18, 0))
-        self._record_btn = RecordButton(record_frame, size=88, command=self._on_record_toggle)
-        self._record_btn.pack()
-        self._record_hint = ctk.CTkLabel(
-            record_frame,
-            text="Presiona para grabar",
-            font=ctk.CTkFont(family=FONT_FAMILY, size=12),
-            text_color=TEXT_MUTED,
-        )
-        self._record_hint.pack(pady=(10, 0))
 
     def _build_status_bar(self):
         self._progress = ctk.CTkProgressBar(
@@ -232,11 +219,6 @@ class TranslatorApp(ctk.CTk):
         self._update_mic_btn_text()
         self._swap_btn.configure(text="  " + i18n.get(self._lang, "translate"))
         self._update_speak_btn_text()
-        self._record_btn.set_texts(
-            i18n.get(self._lang, "record_btn"),
-            i18n.get(self._lang, "record_stop"),
-        )
-        self._record_hint.configure(text=i18n.get(self._lang, "hint_record"))
         self._status.set_status(i18n.get(self._lang, "status_ready"), state="idle")
 
     def _update_mic_btn_text(self):
@@ -276,45 +258,6 @@ class TranslatorApp(ctk.CTk):
             task_id = self._last_audio_task_id + 1
             self._last_audio_task_id = task_id
             self._processing_queue.put(("audio", audio, task_id))
-
-    def _on_record_toggle(self, is_recording: bool):
-        if is_recording:
-            self._start_recording()
-        else:
-            self._stop_recording()
-
-    def _start_recording(self):
-        self._recorder.start_recording()
-        self._status.set_status(i18n.get(self._lang, "status_recording"), state="busy")
-        self._record_hint.configure(text=i18n.get(self._lang, "hint_stop"))
-        self._src_text.delete("0.0", "end")
-        self._tgt_text.delete("0.0", "end")
-        self._progress.pack(fill="x", pady=(8, 8))
-        self._progress.start()
-
-    def _stop_recording(self):
-        self._status.set_status(i18n.get(self._lang, "status_processing"), state="busy")
-        self._record_hint.configure(text=i18n.get(self._lang, "hint_processing"))
-        self._record_btn.reset()
-        self.update_idletasks()
-
-        audio, peak = self._recorder.stop_recording()
-        if audio is None or len(audio) < 8000:
-            self._status.set_status(i18n.get(self._lang, "status_audio_short"), state="error")
-            self._record_hint.configure(text=i18n.get(self._lang, "hint_record"))
-            self._progress.stop()
-            self._progress.pack_forget()
-            return
-        if peak < 0.01:
-            self._status.set_status(i18n.get(self._lang, "status_volume_low", peak=peak), state="error")
-            self._record_hint.configure(text=i18n.get(self._lang, "hint_speak_closer"))
-            self._progress.stop()
-            self._progress.pack_forget()
-            return
-
-        task_id = self._last_audio_task_id + 1
-        self._last_audio_task_id = task_id
-        self._processing_queue.put(("audio", audio, task_id))
 
     def _translate_text_input(self):
         text = self._src_text.get("0.0", "end").strip()
@@ -362,7 +305,6 @@ class TranslatorApp(ctk.CTk):
 
     def _on_error(self, msg: str):
         self._status.set_status(i18n.get(self._lang, "status_error", msg=msg), state="error")
-        self._record_hint.configure(text=i18n.get(self._lang, "hint_record"))
         self._progress.stop()
         self._progress.pack_forget()
         self._swap_btn.configure(state="normal", text="  " + i18n.get(self._lang, "translate"))
@@ -373,7 +315,6 @@ class TranslatorApp(ctk.CTk):
             return
         if not result:
             self.after(0, lambda: self._status.set_status(i18n.get(self._lang, "status_no_speech"), state="error"))
-            self.after(0, lambda: self._record_hint.configure(text=i18n.get(self._lang, "hint_record")))
             self.after(0, lambda: (self._progress.stop(), self._progress.pack_forget()))
             return
         self.after(0, lambda: self._update_src_text(result))
@@ -384,7 +325,6 @@ class TranslatorApp(ctk.CTk):
             return
         self.after(0, lambda t=translation: self._update_tgt_text(t))
         self.after(0, lambda: self._status.set_status(i18n.get(self._lang, "status_done"), state="idle"))
-        self.after(0, lambda: self._record_hint.configure(text=i18n.get(self._lang, "hint_record")))
         self.after(0, lambda: (self._progress.stop(), self._progress.pack_forget()))
 
     def _process_text(self, text):
