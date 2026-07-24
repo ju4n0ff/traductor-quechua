@@ -1,25 +1,24 @@
 from typing import Callable
 import customtkinter as ctk
 from src.ui.theme import (
-    ACCENT, ACCENT_HOVER, ACCENT_SOFT, DANGER, DANGER_HOVER, WARNING,
-    SURFACE, BORDER, TEXT_PRIMARY, TEXT_SECONDARY, FONT_FAMILY,
+    ACCENT, ACCENT_HOVER, ACCENT_SOFT, ACCENT_GLOW,
+    DANGER, DANGER_HOVER, WARNING,
+    SURFACE, SURFACE_HOVER, BORDER,
+    TEXT_PRIMARY, TEXT_SECONDARY, FONT_FAMILY,
+    BUTTON_RADIUS,
 )
 
 
 class Card(ctk.CTkFrame):
-    """Contenedor tipo tarjeta: fondo elevado + borde sutil (patron SaaS)."""
-
     def __init__(self, master, **kwargs):
         kwargs.setdefault("fg_color", SURFACE)
-        kwargs.setdefault("corner_radius", 12)
+        kwargs.setdefault("corner_radius", 14)
         kwargs.setdefault("border_width", 1)
         kwargs.setdefault("border_color", BORDER)
         super().__init__(master, **kwargs)
 
 
 class EyebrowLabel(ctk.CTkLabel):
-    """Etiqueta pequena en mayusculas, estilo 'eyebrow' de interfaces SaaS."""
-
     def __init__(self, master, text: str, **kwargs):
         kwargs.setdefault("font", ctk.CTkFont(family=FONT_FAMILY, size=11, weight="bold"))
         kwargs.setdefault("text_color", TEXT_SECONDARY)
@@ -27,8 +26,6 @@ class EyebrowLabel(ctk.CTkLabel):
 
 
 class Badge(ctk.CTkFrame):
-    """Pastilla/badge para mostrar la direccion de traduccion."""
-
     def __init__(self, master, text: str, **kwargs):
         kwargs.setdefault("fg_color", ACCENT_SOFT)
         kwargs.setdefault("corner_radius", 100)
@@ -44,17 +41,69 @@ class Badge(ctk.CTkFrame):
         self._label.configure(text=text)
 
 
-class RecordButton(ctk.CTkButton):
-    """Boton circular de grabacion."""
+class PillButton(ctk.CTkButton):
+    def __init__(self, master, text: str = "", icon: str = "", **kwargs):
+        display = f"{icon}  {text}" if icon else text
+        kwargs.setdefault("font", ctk.CTkFont(family=FONT_FAMILY, size=12))
+        kwargs.setdefault("fg_color", "transparent")
+        kwargs.setdefault("hover_color", ACCENT_SOFT)
+        kwargs.setdefault("text_color", ACCENT)
+        kwargs.setdefault("border_width", 1)
+        kwargs.setdefault("border_color", ACCENT)
+        kwargs.setdefault("corner_radius", BUTTON_RADIUS)
+        kwargs.setdefault("cursor", "hand2")
+        super().__init__(master, text=display, **kwargs)
 
-    def __init__(self, master, size: int = 96, command: Callable | None = None,
+
+class RecordRing(ctk.CTkFrame):
+    def __init__(self, master, size: int = 104, **kwargs):
+        kwargs.setdefault("fg_color", "transparent")
+        kwargs.setdefault("border_width", 2)
+        kwargs.setdefault("border_color", ACCENT_SOFT)
+        kwargs.setdefault("corner_radius", size // 2)
+        kwargs.setdefault("width", size)
+        kwargs.setdefault("height", size)
+        super().__init__(master, **kwargs)
+        self._pulse_id: str | None = None
+        self._pulse_on = False
+
+    def start_pulse(self):
+        self._pulse_on = True
+        self._pulse()
+
+    def stop_pulse(self):
+        self._pulse_on = False
+        if self._pulse_id:
+            self.after_cancel(self._pulse_id)
+            self._pulse_id = None
+        self.configure(border_color=ACCENT_SOFT)
+
+    def _pulse(self):
+        if not self._pulse_on:
+            return
+        current = self.cget("border_color")
+        nxt = ACCENT if current == ACCENT_SOFT else ACCENT_SOFT
+        self.configure(border_color=nxt)
+        self._pulse_id = self.after(700, self._pulse)
+
+
+class RecordButton(ctk.CTkFrame):
+    def __init__(self, master, size: int = 88, command: Callable | None = None,
                  text_record: str = "GRABAR", text_stop: str = "DETENER", **kwargs):
-        self._size = size
+        kwargs.setdefault("fg_color", "transparent")
+        super().__init__(master, **kwargs)
+
         self._is_recording = False
         self._text_record = text_record
         self._text_stop = text_stop
-        super().__init__(
-            master,
+        self._external_command = command
+        self._size = size
+
+        self._ring = RecordRing(self, size=size + 16)
+        self._ring.pack(expand=True)
+
+        self._btn = ctk.CTkButton(
+            self._ring,
             text=text_record,
             width=size,
             height=size,
@@ -63,12 +112,11 @@ class RecordButton(ctk.CTkButton):
             fg_color=ACCENT,
             hover_color=ACCENT_HOVER,
             text_color="#ffffff",
-            font=ctk.CTkFont(family=FONT_FAMILY, size=max(12, size // 8), weight="bold"),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=max(13, size // 7), weight="bold"),
             cursor="hand2",
             command=self._on_click,
-            **kwargs,
         )
-        self._external_command = command
+        self._btn.place(relx=0.5, rely=0.5, anchor="center")
 
     @property
     def is_recording(self) -> bool:
@@ -77,15 +125,23 @@ class RecordButton(ctk.CTkButton):
     def _on_click(self):
         self._is_recording = not self._is_recording
         if self._is_recording:
-            self.configure(fg_color=DANGER, hover_color=DANGER_HOVER, text=self._text_stop)
+            self._btn.configure(fg_color=DANGER, hover_color=DANGER_HOVER, text=self._text_stop)
+            self._ring.start_pulse()
         else:
             self.reset()
         if self._external_command:
             self._external_command(self._is_recording)
 
+    def set_texts(self, record_text: str, stop_text: str):
+        self._text_record = record_text
+        self._text_stop = stop_text
+        if not self._is_recording:
+            self._btn.configure(text=record_text)
+
     def reset(self):
         self._is_recording = False
-        self.configure(fg_color=ACCENT, hover_color=ACCENT_HOVER, text=self._text_record)
+        self._ring.stop_pulse()
+        self._btn.configure(fg_color=ACCENT, hover_color=ACCENT_HOVER, text=self._text_record)
 
 
 class StatusBar(ctk.CTkFrame):

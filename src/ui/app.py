@@ -4,15 +4,19 @@ import time
 import customtkinter as ctk
 from src.utils.config import APP_TITLE, APP_SIZE
 import src.utils.i18n as i18n
-from src.ui.widgets import RecordButton, StatusBar, Card, EyebrowLabel, Badge, LangToggle
+from src.ui.widgets import RecordButton, StatusBar, Card, EyebrowLabel, Badge, LangToggle, PillButton, BUTTON_RADIUS
 from src.ui.theme import (
-    APP_BG, SURFACE, SURFACE_ALT, ACCENT, ACCENT_HOVER,
+    APP_BG, SURFACE, SURFACE_ALT, SURFACE_HOVER, BORDER,
+    ACCENT, ACCENT_HOVER, ACCENT_SOFT,
     TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, FONT_FAMILY,
 )
 from src.core.audio import AudioRecorder
 from src.core.asr import SpeechRecognizer
 from src.core.translator import TextTranslator
 from src.core.tts import TextToSpeech
+
+_MIC_ICON = "\U0001F3A4"
+_SPEAKER_ICON = "\U0001F50A"
 
 ctk.set_appearance_mode("dark")
 
@@ -22,7 +26,7 @@ class TranslatorApp(ctk.CTk):
         super().__init__()
         self.title(APP_TITLE)
         self.geometry(APP_SIZE)
-        self.minsize(760, 560)
+        self.minsize(760, 580)
         self.configure(fg_color=APP_BG)
 
         self._recorder = AudioRecorder()
@@ -45,8 +49,11 @@ class TranslatorApp(ctk.CTk):
     # ------------------------------------------------------------------ UI
 
     def _setup_ui(self):
-        self._main = ctk.CTkFrame(self, fg_color="transparent")
-        self._main.pack(fill="both", expand=True, padx=28, pady=24)
+        outer = ctk.CTkFrame(self, fg_color="transparent")
+        outer.pack(fill="both", expand=True, padx=32, pady=24)
+
+        self._main = ctk.CTkFrame(outer, fg_color="transparent")
+        self._main.pack(fill="both", expand=True)
 
         self._build_header()
         self._build_text_cards()
@@ -55,20 +62,21 @@ class TranslatorApp(ctk.CTk):
 
     def _build_header(self):
         header_row = ctk.CTkFrame(self._main, fg_color="transparent")
-        header_row.pack(fill="x", pady=(0, 18))
+        header_row.pack(fill="x", pady=(0, 6))
 
         title_col = ctk.CTkFrame(header_row, fg_color="transparent")
         title_col.pack(side="left", anchor="w")
 
         title_row = ctk.CTkFrame(title_col, fg_color="transparent")
         title_row.pack(anchor="w")
-        ctk.CTkLabel(title_row, text="", fg_color=ACCENT, width=4, height=22, corner_radius=2).pack(
-            side="left", padx=(0, 10)
-        )
+
+        accent_bar = ctk.CTkLabel(title_row, text="", fg_color=ACCENT, width=5, height=24, corner_radius=3)
+        accent_bar.pack(side="left", padx=(0, 12))
+
         ctk.CTkLabel(
             title_row,
             text=APP_TITLE,
-            font=ctk.CTkFont(family=FONT_FAMILY, size=22, weight="bold"),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=20, weight="bold"),
             text_color=TEXT_PRIMARY,
         ).pack(side="left")
 
@@ -78,20 +86,25 @@ class TranslatorApp(ctk.CTk):
             font=ctk.CTkFont(family=FONT_FAMILY, size=12),
             text_color=TEXT_MUTED,
         )
-        self._subtitle_lbl.pack(anchor="w", padx=(14, 0), pady=(2, 0))
+        self._subtitle_lbl.pack(anchor="w", padx=(17, 0), pady=(2, 0))
 
         lang_toggle = LangToggle(header_row, command=self._on_lang_change, active=self._lang)
-        lang_toggle.pack(side="right", padx=(0, 10), pady=(4, 0))
+        lang_toggle.pack(side="right", padx=(0, 6), pady=(4, 0))
 
-        self._dir_badge = Badge(header_row, text="QUECHUA  \u21C4  ESPA\u00d1OL")
-        self._dir_badge.pack(side="right", anchor="e", pady=(4, 0))
+        dir_container = ctk.CTkFrame(self._main, fg_color=SURFACE, corner_radius=10, border_width=1, border_color=BORDER)
+        dir_container.pack(fill="x", pady=(14, 18))
+        dir_inner = ctk.CTkFrame(dir_container, fg_color="transparent")
+        dir_inner.pack(fill="x", padx=14, pady=10)
 
-        dir_row = ctk.CTkFrame(self._main, fg_color="transparent")
-        dir_row.pack(fill="x", pady=(0, 16))
-        self._dir_label = ctk.CTkLabel(dir_row, text="", font=ctk.CTkFont(family=FONT_FAMILY, size=12))
+        self._dir_badge = Badge(dir_inner, text="QUECHUA  \u21C4  ESPA\u00d1OL")
+        self._dir_badge.pack(side="left")
+
+        ctk.CTkLabel(dir_inner, text="", fg_color=BORDER, width=1, height=22).pack(side="left", padx=14)
+
+        self._dir_label = ctk.CTkLabel(dir_inner, text="", font=ctk.CTkFont(family=FONT_FAMILY, size=12))
         self._dir_label.pack(side="left", padx=(0, 8))
         self._dir_menu = ctk.CTkOptionMenu(
-            dir_row,
+            dir_inner,
             values=[],
             command=self._on_dir_change,
             width=200,
@@ -103,26 +116,16 @@ class TranslatorApp(ctk.CTk):
         text_frame = ctk.CTkFrame(self._main, fg_color="transparent")
         text_frame.pack(fill="both", expand=True)
 
-        # ---- Tarjeta: texto original ----
         src_card = Card(text_frame)
-        src_card.pack(fill="both", expand=True, pady=(0, 10))
+        src_card.pack(fill="both", expand=True, pady=(0, 8))
         src_header = ctk.CTkFrame(src_card, fg_color="transparent")
         src_header.pack(fill="x", padx=16, pady=(14, 0))
         self._src_eyebrow = EyebrowLabel(src_header, "")
         self._src_eyebrow.pack(side="left")
-        self._src_mic_btn = ctk.CTkButton(
+        self._src_mic_btn = PillButton(
             src_header,
-            text="\U0001F3A4\u00a0Dictar",
-            width=90,
-            height=26,
-            corner_radius=8,
-            fg_color="transparent",
-            hover_color=SURFACE_ALT,
-            border_width=1,
-            border_color=ACCENT,
-            text_color=ACCENT,
-            font=ctk.CTkFont(family=FONT_FAMILY, size=12),
-            cursor="hand2",
+            icon=_MIC_ICON,
+            text="Dictar",
             command=self._on_src_mic_click,
         )
         self._src_mic_btn.pack(side="right")
@@ -138,15 +141,14 @@ class TranslatorApp(ctk.CTk):
         self._src_text.pack(fill="both", expand=True, padx=16, pady=(8, 16))
         self._src_text.bind("<KeyRelease>", self._on_text_change)
 
-        # ---- Boton traducir (primario, centrado) ----
         ctr_frame = ctk.CTkFrame(text_frame, fg_color="transparent")
         ctr_frame.pack(fill="x")
         self._swap_btn = ctk.CTkButton(
             ctr_frame,
             text="Traducir",
-            width=160,
-            height=36,
-            corner_radius=8,
+            width=150,
+            height=34,
+            corner_radius=BUTTON_RADIUS,
             fg_color=ACCENT,
             hover_color=ACCENT_HOVER,
             font=ctk.CTkFont(family=FONT_FAMILY, size=13, weight="bold"),
@@ -155,26 +157,16 @@ class TranslatorApp(ctk.CTk):
         )
         self._swap_btn.pack(pady=8)
 
-        # ---- Tarjeta: traduccion ----
         tgt_card = Card(text_frame)
-        tgt_card.pack(fill="both", expand=True, pady=(10, 0))
+        tgt_card.pack(fill="both", expand=True, pady=(8, 0))
         tgt_header = ctk.CTkFrame(tgt_card, fg_color="transparent")
         tgt_header.pack(fill="x", padx=16, pady=(14, 0))
         self._tgt_eyebrow = EyebrowLabel(tgt_header, "")
         self._tgt_eyebrow.pack(side="left")
-        self._speak_tgt_btn = ctk.CTkButton(
+        self._speak_tgt_btn = PillButton(
             tgt_header,
+            icon=_SPEAKER_ICON,
             text="Escuchar",
-            width=110,
-            height=26,
-            corner_radius=8,
-            fg_color="transparent",
-            hover_color=SURFACE_ALT,
-            border_width=1,
-            border_color=ACCENT,
-            text_color=ACCENT,
-            font=ctk.CTkFont(family=FONT_FAMILY, size=12),
-            cursor="hand2",
             command=self._speak_translated,
         )
         self._speak_tgt_btn.pack(side="right")
@@ -191,7 +183,7 @@ class TranslatorApp(ctk.CTk):
 
     def _build_record_section(self):
         record_frame = ctk.CTkFrame(self._main, fg_color="transparent")
-        record_frame.pack(pady=18)
+        record_frame.pack(pady=16)
         self._record_btn = RecordButton(record_frame, size=88, command=self._on_record_toggle)
         self._record_btn.pack()
         self._record_hint = ctk.CTkLabel(
@@ -204,7 +196,7 @@ class TranslatorApp(ctk.CTk):
 
     def _build_status_bar(self):
         self._progress = ctk.CTkProgressBar(
-            self._main, mode="indeterminate", corner_radius=4, height=4,
+            self._main, mode="indeterminate", corner_radius=3, height=3,
             fg_color=SURFACE, progress_color=ACCENT,
         )
         self._progress.pack(fill="x", pady=(0, 8))
@@ -229,19 +221,22 @@ class TranslatorApp(ctk.CTk):
         self._tgt_eyebrow.configure(text=i18n.get(self._lang, "tgt_eyebrow").upper())
         self._update_mic_btn_text()
         self._swap_btn.configure(text="\u21C4 " + i18n.get(self._lang, "translate"))
-        self._speak_tgt_btn.configure(text="\U0001F50A " + i18n.get(self._lang, "listen"))
-        self._record_btn._text_record = i18n.get(self._lang, "record_btn")
-        self._record_btn._text_stop = i18n.get(self._lang, "record_stop")
-        if not self._record_btn.is_recording:
-            self._record_btn.configure(text=self._record_btn._text_record)
+        self._update_speak_btn_text()
+        self._record_btn.set_texts(
+            i18n.get(self._lang, "record_btn"),
+            i18n.get(self._lang, "record_stop"),
+        )
         self._record_hint.configure(text=i18n.get(self._lang, "hint_record"))
         self._status.set_status(i18n.get(self._lang, "status_ready"), state="idle")
 
     def _update_mic_btn_text(self):
         if self._src_mic_recording:
-            self._src_mic_btn.configure(text="\U0001F3A4\u00a0" + i18n.get(self._lang, "src_detener"))
+            self._src_mic_btn.configure(text=f"{_MIC_ICON}  {i18n.get(self._lang, 'src_detener')}")
         else:
-            self._src_mic_btn.configure(text="\U0001F3A4\u00a0" + i18n.get(self._lang, "src_dictar"))
+            self._src_mic_btn.configure(text=f"{_MIC_ICON}  {i18n.get(self._lang, 'src_dictar')}")
+
+    def _update_speak_btn_text(self):
+        self._speak_tgt_btn.configure(text=f"{_SPEAKER_ICON}  {i18n.get(self._lang, 'listen')}")
 
     def _on_dir_change(self, label: str):
         self._direction_code = i18n.dir_code(label)
@@ -249,19 +244,19 @@ class TranslatorApp(ctk.CTk):
     # ------------------------------------------------------------- eventos
 
     def _on_text_change(self, event=None):
-        pass  # Se traduce manualmente via boton
+        pass
 
     def _on_src_mic_click(self):
         if not self._src_mic_recording:
             self._src_mic_recording = True
             self._update_mic_btn_text()
-            self._src_mic_btn.configure(fg_color=ACCENT, text_color="#ffffff")
+            self._src_mic_btn.configure(fg_color=ACCENT, text_color="#ffffff", border_color=ACCENT)
             self._recorder.start_recording()
             self._status.set_status(i18n.get(self._lang, "status_recording"), state="busy")
         else:
             self._src_mic_recording = False
             self._update_mic_btn_text()
-            self._src_mic_btn.configure(fg_color="transparent", text_color=ACCENT)
+            self._src_mic_btn.configure(fg_color="transparent", text_color=ACCENT, border_color=ACCENT)
             self._status.set_status(i18n.get(self._lang, "status_processing"), state="busy")
             self.update_idletasks()
             audio, peak = self._recorder.stop_recording()
